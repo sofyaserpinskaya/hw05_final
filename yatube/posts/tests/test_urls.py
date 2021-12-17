@@ -40,7 +40,6 @@ class PostsURLTests(TestCase):
         )
         cls.POST_EDIT_URL = reverse('posts:post_edit', args=[cls.post.id])
         cls.POST_DETAIL_URL = reverse('posts:post_detail', args=[cls.post.id])
-        cls.COMMENT_URL = reverse('posts:add_comment', args=[cls.post.id])
         cls.guest = Client()
         cls.user = User.objects.create_user(username=USER_USERNAME)
         cls.another = Client()
@@ -59,8 +58,11 @@ class PostsURLTests(TestCase):
             [FOLLOW_URL, self.author, HTTPStatus.OK],
             [FOLLOW_URL, self.guest, HTTPStatus.FOUND],
             [PROFILE_FOLLOW_URL, self.author, HTTPStatus.FOUND],
+            [PROFILE_FOLLOW_URL, self.another, HTTPStatus.FOUND],
+            [PROFILE_FOLLOW_URL, self.guest, HTTPStatus.FOUND],
             [PROFILE_UNFOLLOW_URL, self.author, HTTPStatus.FOUND],
-            [self.COMMENT_URL, self.another, HTTPStatus.FOUND],
+            [PROFILE_UNFOLLOW_URL, self.another, HTTPStatus.FOUND],
+            [PROFILE_UNFOLLOW_URL, self.guest, HTTPStatus.FOUND],
             [UNEXISTING_PAGE, self.guest, HTTPStatus.NOT_FOUND],
             [POST_CREATE_URL, self.guest, HTTPStatus.FOUND],
             [self.POST_EDIT_URL, self.guest, HTTPStatus.FOUND],
@@ -77,6 +79,14 @@ class PostsURLTests(TestCase):
             [self.POST_EDIT_URL, self.guest,
              f'{LOGIN_URL}?next={self.POST_EDIT_URL}'],
             [self.POST_EDIT_URL, self.another, self.POST_DETAIL_URL],
+            [PROFILE_FOLLOW_URL, self.guest,
+             f'{LOGIN_URL}?next={PROFILE_FOLLOW_URL}'],
+            [PROFILE_FOLLOW_URL, self.author, PROFILE_URL],
+            [PROFILE_FOLLOW_URL, self.another, PROFILE_URL],
+            [PROFILE_UNFOLLOW_URL, self.guest,
+             f'{LOGIN_URL}?next={PROFILE_UNFOLLOW_URL}'],
+            [PROFILE_UNFOLLOW_URL, self.author, PROFILE_URL],
+            [PROFILE_UNFOLLOW_URL, self.another, PROFILE_URL],
         ]
         for url, client, redirection in url_client_redirections:
             with self.subTest(url=url, client=client):
@@ -89,7 +99,8 @@ class PostsURLTests(TestCase):
             PROFILE_URL: 'posts/profile.html',
             POST_CREATE_URL: 'posts/create_post.html',
             self.POST_EDIT_URL: 'posts/create_post.html',
-            self.POST_DETAIL_URL: 'posts/post_detail.html'
+            self.POST_DETAIL_URL: 'posts/post_detail.html',
+            FOLLOW_URL: 'posts/follow.html',
         }
         for url, template in urls_templates.items():
             with self.subTest(url=url):

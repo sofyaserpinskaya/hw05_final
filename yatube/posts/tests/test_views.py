@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Follow, Group, Post, User
+from ..models import Comment, Follow, Group, Post, User
 from ..settings import POSTS_PER_PAGE
 
 
@@ -29,6 +29,7 @@ SMALL_GIF = (
     b'\x02\x00\x01\x00\x00\x02\x02\x0C'
     b'\x0A\x00\x3B'
 )
+COMMENT = 'Тестовый комментарий'
 
 INDEX_URL = reverse('posts:index')
 GROUP_LIST_URL = reverse('posts:group_list', args=[GROUP_SLUG])
@@ -72,6 +73,11 @@ class PostPagesTest(TestCase):
             slug=GROUP_2_SLUG,
             description=GROUP_2_DESCRIPTION,
         )
+        cls.comment = Comment.objects.create(
+            text=COMMENT,
+            post=cls.post,
+            author=cls.author_user,
+        )
         cls.author = Client()
         cls.author.force_login(cls.author_user)
         cls.user = User.objects.create_user(username=USER_USERNAME)
@@ -83,10 +89,17 @@ class PostPagesTest(TestCase):
         super().tearDownClass()
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
-    def test_index_profile_group_list_post_detail_show_correct_context(self):
-        urls = [INDEX_URL, GROUP_LIST_URL, PROFILE_URL, self.POST_DETAIL_URL]
+    def test_index_follow_profile_grouplist_postdetail_correct_context(self):
+        Follow.objects.create(user=self.user, author=self.author_user)
+        urls = [
+            INDEX_URL,
+            FOLLOW_URL,
+            GROUP_LIST_URL,
+            PROFILE_URL,
+            self.POST_DETAIL_URL,
+        ]
         for url in urls:
-            request = self.author.get(url)
+            request = self.another.get(url)
             with self.subTest(url=url):
                 if url != self.POST_DETAIL_URL:
                     page_obj = request.context['page_obj']
@@ -100,9 +113,20 @@ class PostPagesTest(TestCase):
                 self.assertEqual(post.id, self.post.id)
                 self.assertEqual(post.image, self.post.image)
 
-    def test_post_does_not_exist_on_wrong_group_list_page(self):
-        response = self.author.get(GROUP_LIST_2_URL)
-        self.assertNotIn(self.post, response.context['page_obj'])
+    def test_comment_on_post_detail_page_context(self):
+        post_comments = self.author.get(
+            self.POST_DETAIL_URL).context['post'].comments.all()
+        self.assertEqual(len(post_comments), 1)
+        self.assertEqual(post_comments[0].text, self.comment.text)
+
+    def test_post_does_not_exist_on_wrong_pages(self):
+        urls = [
+            GROUP_LIST_2_URL,
+            FOLLOW_URL,
+        ]
+        for url in urls:
+            response = self.another.get(url)
+            self.assertNotIn(self.post, response.context['page_obj'])
 
     def test_author_on_profile_page(self):
         self.assertEqual(self.author.get(PROFILE_URL).context['author'],
@@ -115,34 +139,32 @@ class PostPagesTest(TestCase):
         self.assertEqual(group.slug, self.group.slug)
         self.assertEqual(group.id, self.group.id)
 
-    def test_follow_unfollow_authors(self):
+    def test_follow_author(self):
         self.assertEqual(Follow.objects.count(), 0)
-        response = self.another.post(PROFILE_FOLLOW_URL)
+        response = self.another.get(PROFILE_FOLLOW_URL)
         self.assertEqual(Follow.objects.count(), 1)
-        follow = Follow.objects.first()
-        self.assertEqual(follow.user.username, self.user.username)
-        self.assertEqual(follow.author.username, self.author_user.username)
+        self.assertTrue(Follow.objects.filter(
+            user=self.user, author=self.author_user
+        ).exists())
         self.assertRedirects(response, PROFILE_URL)
-        response = self.another.post(PROFILE_UNFOLLOW_URL)
+
+    def test_unfollow_author(self):
         self.assertEqual(Follow.objects.count(), 0)
+        Follow.objects.create(user=self.user, author=self.author_user)
+        self.assertEqual(Follow.objects.count(), 1)
+        response = self.another.get(PROFILE_UNFOLLOW_URL)
+        self.assertEqual(Follow.objects.count(), 0)
+        self.assertFalse(Follow.objects.filter(
+            user=self.user, author=self.author_user
+        ).exists())
         self.assertRedirects(response, PROFILE_URL)
-
-    def test_post_on_follow_page(self):
-        response = self.another.post(PROFILE_FOLLOW_URL)
-        response = self.another.get(FOLLOW_URL)
-        self.assertIn(self.post, response.context['page_obj'])
-
-    def test_post_does_not_exist_on_wrong_follow_page(self):
-        response = self.another.get(FOLLOW_URL)
-        self.assertNotIn(self.post, response.context['page_obj'])
 
     def test_cache_index_page(self):
+        index_page = self.author.get(INDEX_URL).content
         Post.objects.all().delete()
-        self.assertIn(self.post.text.encode('utf-8'),
-                      self.author.get(INDEX_URL).content)
+        self.assertEqual(self.author.get(INDEX_URL).content, index_page)
         cache.delete(make_template_fragment_key('index_page'))
-        self.assertNotIn(self.post.text.encode('utf-8'),
-                         self.author.get(INDEX_URL).content)
+        self.assertNotEqual(self.author.get(INDEX_URL).content, index_page)
 
 
 class PaginatorViewsTest(TestCase):
@@ -162,23 +184,19 @@ class PaginatorViewsTest(TestCase):
                 group=cls.group
             ) for i in range(POSTS_PER_PAGE + 1)
         ])
-
-        cls.urls = [
-            INDEX_URL,
-            GROUP_LIST_URL,
-            PROFILE_URL,
-        ]
         cls.guest = Client()
 
-    def test_paginator_first_page(self):
-        for url in self.urls:
+    def test_paginator(self):
+        urls_expected_post_number = [
+            [INDEX_URL, POSTS_PER_PAGE],
+            [GROUP_LIST_URL, POSTS_PER_PAGE],
+            [PROFILE_URL, POSTS_PER_PAGE],
+            [f'{INDEX_URL}?page=2', 1],
+            [f'{GROUP_LIST_URL}?page=2', 1],
+            [f'{PROFILE_URL}?page=2', 1],
+        ]
+        for url, expected_post_number in urls_expected_post_number:
             with self.subTest(url=url):
                 response = self.guest.get(url)
                 self.assertEqual(len(response.context['page_obj']),
-                                 POSTS_PER_PAGE)
-
-    def test_paginator_second_page(self):
-        for url in self.urls:
-            with self.subTest(url=url):
-                response = self.guest.get(url + '?page=2')
-                self.assertEqual(len(response.context['page_obj']), 1)
+                                 expected_post_number)

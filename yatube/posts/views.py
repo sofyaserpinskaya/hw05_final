@@ -29,17 +29,14 @@ def group_posts(request, slug):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    not_user = False
     following = False
-    if request.user.is_authenticated:
-        if request.user != author:
-            not_user = True
-        if Follow.objects.filter(user=request.user, author=author).exists():
-            following = True
+    if request.user.is_authenticated and Follow.objects.filter(
+        user=request.user, author=author
+    ).exists():
+        following = True
     return render(request, 'posts/profile.html', {
         'author': author,
         'following': following,
-        'not_user': not_user,
         'page_obj': paginated_page(request, author.posts.all()),
     })
 
@@ -49,7 +46,6 @@ def post_detail(request, post_id):
     return render(request, 'posts/post_detail.html', {
         'post': post,
         'form': CommentForm(request.POST or None),
-        'comments': post.comments.all(),
     })
 
 
@@ -106,14 +102,15 @@ def follow_index(request):
 @login_required
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
-    follow = Follow.objects.filter(user=request.user, author=author).exists()
-    if not follow and request.user != author:
-        Follow.objects.create(user=request.user, author=author)
+    if request.user != author:
+        Follow.objects.get_or_create(user=request.user, author=author)
     return redirect('posts:profile', username=username)
 
 
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    Follow.objects.filter(user=request.user, author=author).delete()
+    if request.user != author:
+        follow = get_object_or_404(Follow, user=request.user, author=author)
+        follow.delete()
     return redirect('posts:profile', username=username)

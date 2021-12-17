@@ -47,8 +47,7 @@ class Post(CreatedModel):
         blank=True
     )
 
-    class Meta:
-        ordering = ('-created', )
+    class Meta(CreatedModel.Meta):
         verbose_name = 'Пост'
         verbose_name_plural = 'Посты'
 
@@ -75,6 +74,10 @@ class Comment(CreatedModel):
         help_text='Введите текст комментария',
     )
 
+    class Meta(CreatedModel.Meta):
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+
 
 class Follow(models.Model):
     user = models.ForeignKey(
@@ -89,3 +92,11 @@ class Follow(models.Model):
         related_name='following',
         verbose_name='Подписка'
     )
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'author'],
+                                    name='unique follow'),
+        ]
