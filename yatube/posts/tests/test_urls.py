@@ -60,7 +60,7 @@ class PostsURLTests(TestCase):
             [PROFILE_FOLLOW_URL, self.author, HTTPStatus.FOUND],
             [PROFILE_FOLLOW_URL, self.another, HTTPStatus.FOUND],
             [PROFILE_FOLLOW_URL, self.guest, HTTPStatus.FOUND],
-            [PROFILE_UNFOLLOW_URL, self.author, HTTPStatus.FOUND],
+            [PROFILE_UNFOLLOW_URL, self.author, HTTPStatus.NOT_FOUND],
             [PROFILE_UNFOLLOW_URL, self.another, HTTPStatus.FOUND],
             [PROFILE_UNFOLLOW_URL, self.guest, HTTPStatus.FOUND],
             [UNEXISTING_PAGE, self.guest, HTTPStatus.NOT_FOUND],
@@ -85,7 +85,6 @@ class PostsURLTests(TestCase):
             [PROFILE_FOLLOW_URL, self.another, PROFILE_URL],
             [PROFILE_UNFOLLOW_URL, self.guest,
              f'{LOGIN_URL}?next={PROFILE_UNFOLLOW_URL}'],
-            [PROFILE_UNFOLLOW_URL, self.author, PROFILE_URL],
             [PROFILE_UNFOLLOW_URL, self.another, PROFILE_URL],
         ]
         for url, client, redirection in url_client_redirections:

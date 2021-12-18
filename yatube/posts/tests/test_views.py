@@ -117,9 +117,10 @@ class PostPagesTest(TestCase):
         post_comments = self.author.get(
             self.POST_DETAIL_URL).context['post'].comments.all()
         self.assertEqual(len(post_comments), 1)
-        self.assertEqual(post_comments[0].text, self.comment.text)
-        self.assertEqual(post_comments[0].author, self.comment.author)
-        self.assertEqual(post_comments[0].post, self.comment.post)
+        post_comment = post_comments[0]
+        self.assertEqual(post_comment.text, self.comment.text)
+        self.assertEqual(post_comment.author, self.comment.author)
+        self.assertEqual(post_comment.post, self.comment.post)
 
     def test_post_does_not_exist_on_wrong_pages(self):
         urls = [

@@ -140,6 +140,7 @@ class PostCreateFormTests(TestCase):
                     self.assertIsInstance(form_field, expected)
 
     def test_add_comment(self):
+        Comment.objects.all().delete()
         form_data = {
             'text': COMMENT,
         }
@@ -156,6 +157,7 @@ class PostCreateFormTests(TestCase):
         self.assertEqual(comment.post, self.post)
 
     def test_guest_client_cannot_write_comments(self):
+        Comment.objects.all().delete()
         form_data = {
             'text': COMMENT,
         }
@@ -169,9 +171,15 @@ class PostCreateFormTests(TestCase):
 
     def test_guest_client_cannot_create_post(self):
         Post.objects.all().delete()
+        uploaded = SimpleUploadedFile(
+            name='small3.gif',
+            content=SMALL_GIF,
+            content_type='image/gif'
+        )
         form_data = {
             'text': POST_TEXT_2,
             'group': self.group_1.id,
+            'image': uploaded,
         }
         response = self.guest.post(
             POST_CREATE_URL,
