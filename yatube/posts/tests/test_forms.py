@@ -30,6 +30,7 @@ SMALL_GIF = (
     b'\x0A\x00\x3B'
 )
 COMMENT = 'Тестовый комментарий'
+IMAGE_UPLOAD_TO = Post._meta.get_field('image').upload_to
 
 PROFILE_URL = reverse('posts:profile', args=[AUTHOR_USERNAME])
 POST_CREATE_URL = reverse('posts:post_create')
@@ -96,8 +97,7 @@ class PostCreateFormTests(TestCase):
         self.assertEqual(post.text, form_data['text'])
         self.assertEqual(post.group.id, form_data['group'])
         self.assertEqual(post.author, self.author_user)
-        self.assertEqual(post.image, post._meta.get_field('image').upload_to
-                         + form_data['image'].name)
+        self.assertEqual(post.image, IMAGE_UPLOAD_TO + form_data['image'].name)
         self.assertRedirects(response, PROFILE_URL)
 
     def test_edit_post(self):
@@ -123,8 +123,7 @@ class PostCreateFormTests(TestCase):
         self.assertEqual(post.text, form_data['text'])
         self.assertEqual(post.group.id, form_data['group'])
         self.assertEqual(post.author, self.post.author)
-        self.assertEqual(post.image, post._meta.get_field('image').upload_to
-                         + form_data['image'].name)
+        self.assertEqual(post.image, IMAGE_UPLOAD_TO + form_data['image'].name)
 
     def test_create_edit_pages_show_correct_context(self):
         urls = [POST_CREATE_URL, self.POST_EDIT_URL]
@@ -141,7 +140,6 @@ class PostCreateFormTests(TestCase):
                     self.assertIsInstance(form_field, expected)
 
     def test_add_comment(self):
-        self.assertEqual(Comment.objects.count(), 0)
         form_data = {
             'text': COMMENT,
         }
@@ -158,7 +156,6 @@ class PostCreateFormTests(TestCase):
         self.assertEqual(comment.post, self.post)
 
     def test_guest_client_cannot_write_comments(self):
-        self.assertEqual(Comment.objects.count(), 0)
         form_data = {
             'text': COMMENT,
         }
@@ -196,14 +193,18 @@ class PostCreateFormTests(TestCase):
             'group': self.group_2.id,
             'image': uploaded,
         }
-        users = [self.guest, self.another]
-        for user in users:
-            user.post(
+        clients_redirections = [
+            [self.guest, f'{LOGIN_URL}?next={self.POST_EDIT_URL}'],
+            [self.another, self.POST_DETAIL_URL],
+        ]
+        for client, redirection in clients_redirections:
+            response = client.post(
                 self.POST_EDIT_URL,
                 data=form_data,
                 follow=True
             )
-            with self.subTest(user=user):
+            with self.subTest(client=client):
+                self.assertRedirects(response, redirection)
                 self.assertEqual(Post.objects.count(), 1)
                 post = Post.objects.get(pk=self.post.pk)
                 self.assertEqual(post.text, self.post.text)

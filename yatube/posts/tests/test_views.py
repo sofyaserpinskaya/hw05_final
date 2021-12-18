@@ -118,6 +118,8 @@ class PostPagesTest(TestCase):
             self.POST_DETAIL_URL).context['post'].comments.all()
         self.assertEqual(len(post_comments), 1)
         self.assertEqual(post_comments[0].text, self.comment.text)
+        self.assertEqual(post_comments[0].author, self.comment.author)
+        self.assertEqual(post_comments[0].post, self.comment.post)
 
     def test_post_does_not_exist_on_wrong_pages(self):
         urls = [
@@ -141,23 +143,21 @@ class PostPagesTest(TestCase):
 
     def test_follow_author(self):
         self.assertEqual(Follow.objects.count(), 0)
-        response = self.another.get(PROFILE_FOLLOW_URL)
+        self.another.get(PROFILE_FOLLOW_URL)
         self.assertEqual(Follow.objects.count(), 1)
         self.assertTrue(Follow.objects.filter(
             user=self.user, author=self.author_user
         ).exists())
-        self.assertRedirects(response, PROFILE_URL)
 
     def test_unfollow_author(self):
         self.assertEqual(Follow.objects.count(), 0)
         Follow.objects.create(user=self.user, author=self.author_user)
         self.assertEqual(Follow.objects.count(), 1)
-        response = self.another.get(PROFILE_UNFOLLOW_URL)
+        self.another.get(PROFILE_UNFOLLOW_URL)
         self.assertEqual(Follow.objects.count(), 0)
         self.assertFalse(Follow.objects.filter(
             user=self.user, author=self.author_user
         ).exists())
-        self.assertRedirects(response, PROFILE_URL)
 
     def test_cache_index_page(self):
         index_page = self.author.get(INDEX_URL).content
