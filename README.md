@@ -7,7 +7,7 @@
 
 ### Автор
 
-Софья Серпинская: <https://github.com/sofyaserpinskaya>
+[Софья Серпинская](https://github.com/sofyaserpinskaya)
 
 ### Технологии
 
