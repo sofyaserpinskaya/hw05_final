@@ -1,3 +1,14 @@
-# hw05_final
+# Yatube - блог-платформа, социальная сеть
 
-[![CI](https://github.com/yandex-praktikum/hw05_final/actions/workflows/python-app.yml/badge.svg?branch=master)](https://github.com/yandex-praktikum/hw05_final/actions/workflows/python-app.yml)
+## Описание
+
+Платформа предоставляет возможность публиковать записи на личной странице, добавлять публикации в группы по темам, подписываться на других авторов и комментировать их записи.
+Реализована система регистрации и восстановления пароля.
+
+### Автор
+
+Софья Серпинская: <https://github.com/sofyaserpinskaya>
+
+### Технологии
+
+Python, Django, Django Rest Framework, SQLite, pytest.
